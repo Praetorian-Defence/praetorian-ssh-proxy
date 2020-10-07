@@ -6,7 +6,7 @@ import logging
 import paramiko
 from paramiko import AutoAddPolicy, SSHException
 
-from praetorian_ssh_proxy.interfaces.server_interface import Server
+from praetorian_ssh_proxy.server import Server
 
 
 class ConnectionHandler(threading.Thread):

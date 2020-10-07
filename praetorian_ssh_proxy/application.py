@@ -7,7 +7,7 @@ from pathlib import Path
 import paramiko
 from dotenv import load_dotenv
 
-from praetorian_ssh_proxy.handlers.connection_handler import ConnectionHandler
+from praetorian_ssh_proxy.connection_handler import ConnectionHandler
 
 
 class Application(object):
