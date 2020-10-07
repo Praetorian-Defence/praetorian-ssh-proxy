@@ -4,8 +4,10 @@ import threading
 import logging
 
 import paramiko
-from paramiko import AutoAddPolicy, SSHException
+from paramiko import AutoAddPolicy
 
+from praetorian_ssh_proxy.input_handler import InputHandler
+from praetorian_ssh_proxy.output_handler import OutputHandler
 from praetorian_ssh_proxy.server import Server
 
 
@@ -16,7 +18,22 @@ class ConnectionHandler(threading.Thread):
         self._client = client
         self._keyfile = keyfile
 
-    def run(self):
+    def _create_ssh_client(self, channel):
+        try:
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(AutoAddPolicy())
+            ssh_client.connect(
+                hostname=self._application.SSH_SERVER_URL,
+                username=self._application.SSH_SERVER_USERNAME,
+                password=self._application.SSH_SERVER_PASSWORD
+            )
+        except Exception as e:
+            channel.send(str(e))
+            self._client.close()
+            sys.exit()
+        return ssh_client
+
+    def _create_channel(self):
         try:
             session = paramiko.Transport(self._client)
             session.add_server_key(self._keyfile)
@@ -36,46 +53,15 @@ class ConnectionHandler(threading.Thread):
 
         channel.send('Welcome to Praetorian SSH proxy.\r\n\r\n')
         channel.send('> ')
-        buffer = ''
+
+        return channel
+
+    def run(self):
+        channel = self._create_channel()
+        ssh_client = self._create_ssh_client(channel)
 
         while True:
-            data = channel.recv(1024)
+            client_data = InputHandler.create_from_channel(self._client, channel).prepare_input()
 
-            if not data:
-                continue
-
-            # BACKSPACE
-            if data == b'\x7f':
-                buffer = buffer[:-1]
-                channel.send('\b \b')
-
-            # EXIT (CTRL+C)
-            elif data == b'\x03':
-                self._client.close()
-
-            # ENTER
-            elif data == b'\r':
-                try:
-                    ssh = paramiko.SSHClient()
-                    ssh.set_missing_host_key_policy(AutoAddPolicy())
-                    ssh.connect(
-                        hostname=self._application.SSH_SERVER_URL,
-                        username=self._application.SSH_SERVER_USERNAME,
-                        password=self._application.SSH_SERVER_PASSWORD
-                    )
-                    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(buffer)
-                    stdout_value = ssh_stdout.read() + ssh_stderr.read()
-                    channel.send(stdout_value)
-                    channel.send('> ')
-                    buffer = ''
-                except SSHException as e:
-                    channel.send(str(e))
-                    self._client.close()
-                    sys.exit()
-                except Exception as e:
-                    channel.send(str(e))
-                    self._client.close()
-                    buffer = ''
-            else:
-                channel.send(data)
-                buffer += data.decode()
+            if client_data:
+                OutputHandler.create_from_channel(self._client, ssh_client, channel, client_data).send_output()
