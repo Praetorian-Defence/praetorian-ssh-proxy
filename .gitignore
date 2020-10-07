@@ -3,4 +3,4 @@
 .deploy/
 /venv
 __pycache__
-filename.log
+logs/filename.log
