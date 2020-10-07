@@ -33,7 +33,7 @@ setup(
     long_description_content_type='text/markdown',
     entry_points={
         "console_scripts": [
-            'duckql-cli = duckql.cli:cli'
+            'app = praetorian_ssh_proxy.app:main'
         ]
     },
     classifiers=[
