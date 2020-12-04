@@ -4,7 +4,7 @@ from setuptools import setup
 def read_files(files):
     data = []
     for file in files:
-        with open(file) as f:
+        with open(file, encoding='utf-8') as f:
             data.append(f.read())
     return "\n".join(data)
 
@@ -21,10 +21,10 @@ setup(
     ],
     install_requires=[
         'paramiko==2.7.*',
-        'peewee==3.13.*',
-        'python-dotenv==0.14.*',
+        'python-dotenv==0.15.*',
+        'praetorian-api-client==0.3.*'
     ],
-    url='https://github.com/zurek11/praetorian-ssh-proxy',
+    url='https://github.com/Praetorian-Defence/praetorian-ssh-proxy',
     license='MIT',
     author='Adam Žúrek',
     author_email='adamzurek14@gmail.com',

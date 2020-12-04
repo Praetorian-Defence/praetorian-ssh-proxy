@@ -17,7 +17,7 @@ def main():
         sys.exit()
 
     application = Application()
-    application.start_server(host, port, application.HOST_KEY)
+    application.listen(host, port, application.HOST_KEY)
 
 
 if __name__ == '__main__':

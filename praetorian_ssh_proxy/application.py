@@ -1,13 +1,14 @@
 import logging
 import os
 import socket
-import sys
 from pathlib import Path
 
 import paramiko
 from dotenv import load_dotenv
+from praetorian_api_client.configuration import Environment, Configuration
 
-from praetorian_ssh_proxy.connection_handler import ConnectionHandler
+from praetorian_ssh_proxy.hanlers.connection_handler import ConnectionHandler
+from praetorian_ssh_proxy.errors import SshException
 
 
 class Application(object):
@@ -18,6 +19,15 @@ class Application(object):
             Application.__instance__ = self
         else:
             raise Exception("You cannot create another SingletonGovt class")
+
+        self.api_client = None
+        self.ssh_client = None
+        self.user_client = None
+
+        self.user_ip_address = None
+        self.keyfile = None
+        self.channel = None
+        self.remote = None
 
         self.BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
         self.ENV_FILE = os.path.join(self.BASE_DIR, '.env')
@@ -33,14 +43,10 @@ class Application(object):
         self.LOGGING_LEVEL = 'DEBUG'
         self.BACKLOG = 100
 
-        # TODO: Toto treba brat z Praetorian DB
-        self.SSH_SERVER_URL = os.getenv('SSH_SERVER_URL')
-        self.SSH_SERVER_USERNAME = os.getenv('SSH_SERVER_USERNAME')
-        self.SSH_SERVER_PASSWORD = os.getenv('SSH_SERVER_PASSWORD')
-
-        # TODO: Brať credentials z Praetorian DB
-        self.CLIENT_USERNAME = os.getenv('CLIENT_USERNAME')
-        self.CLIENT_PASSWORD = os.getenv('CLIENT_PASSWORD')
+        self.environment = Environment(name='praetorian-api', api_url=os.getenv('PRAETORIAN_API_URL'), read_only=False)
+        self.configuration = Configuration(
+            environment=self.environment, key=os.getenv('PRAETORIAN_API_KEY'), secret=os.getenv('PRAETORIAN_API_SECRET')
+        )
 
         paramiko_level = getattr(paramiko.common, self.SSH_LOGGING_LEVEL)
         paramiko.common.logging.basicConfig(level=paramiko_level)
@@ -51,7 +57,7 @@ class Application(object):
             Application()
         return Application.__instance__
 
-    def start_server(self, host, port, keyfile):
+    def listen(self, host, port, keyfile):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
@@ -60,13 +66,16 @@ class Application(object):
             logging.getLogger('paramiko').info('Listening for connection ...')
 
             while True:
-                client, addr = sock.accept()
+                user_client, addr = sock.accept()
+                self.user_client = user_client
+                self.keyfile = keyfile
+                self.user_ip_address = str(sock.getsockname()[0])
 
                 logging.getLogger('paramiko').info('Connection Established!')
-                server_thread = ConnectionHandler(self, client, keyfile)
+
+                server_thread = ConnectionHandler(self)
                 server_thread.setDaemon(True)
                 server_thread.start()
 
         except Exception as e:
-            logging.getLogger('paramiko').error(f'Connection Failed: {str(e)}')
-            sys.exit()
+            raise SshException(message=f'Connection Failed: {str(e)}')
