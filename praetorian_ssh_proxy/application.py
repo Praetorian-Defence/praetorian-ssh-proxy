@@ -20,6 +20,8 @@ class Application(object):
         else:
             raise Exception("You cannot create another SingletonGovt class")
 
+        self.logged_user = None
+
         self.api_client = None
         self.ssh_client = None
         self.user_client = None
@@ -27,7 +29,7 @@ class Application(object):
         self.user_ip_address = None
         self.keyfile = None
         self.channel = None
-        self.remote = None
+        self.remote_checker = None
 
         self.BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
         self.ENV_FILE = os.path.join(self.BASE_DIR, '.env')

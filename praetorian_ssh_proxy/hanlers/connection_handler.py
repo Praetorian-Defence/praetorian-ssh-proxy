@@ -60,19 +60,20 @@ class ConnectionHandler(threading.Thread):
         server = self._create_ssh_server(session)
         server.wait_to_auth()
 
-        if server.logged_user.is_temporary:
-            self._connect_to_remote(self._application.remote)
+        if self._application.logged_user.is_temporary:
+            self._connect_to_remote(self._application.remote_checker.remote)
             self._application.channel = session.accept(timeout=3000)
 
         else:
             self._application.channel = session.accept(timeout=3000)
 
-            remote = MenuHandler.create_from_channel(
+            MenuHandler.create_from_channel(
                 client=self._application.user_client,
-                client_channel=self._application.channel
-            ).serve_remote_menu(self._application.remote)
+                client_channel=self._application.channel,
+                remote_checker=self._application.remote_checker
+            ).serve_remote_menu()
 
-            self._connect_to_remote(remote)
+            self._connect_to_remote(self._application.remote_checker.remote)
             self._application.channel.send('Successfully connected to Praetorian SSH Proxy Server.\r\n\r\n')
 
             InteractiveHandler.create_from_channel(

@@ -1,9 +1,13 @@
 import logging
 import threading
+import time
+
 import paramiko
 
 from praetorian_api_client.api_client import ApiClient
 from praetorian_api_client.errors import ApiException
+
+from praetorian_ssh_proxy.checkers.remote_checker import RemoteChecker
 
 
 class Server(paramiko.ServerInterface):
@@ -12,13 +16,6 @@ class Server(paramiko.ServerInterface):
         self._application = application
         self._session = session
         self._is_authenticated = False
-
-        self._logged_user = None
-        self._password = None
-
-    @property
-    def logged_user(self):
-        return self._logged_user
 
     @property
     def is_authenticated(self):
@@ -29,38 +26,6 @@ class Server(paramiko.ServerInterface):
             if self._is_authenticated:
                 break
 
-    def _check_user(self, user, password, remote_name: str = None) -> bool:
-        self._logged_user = user
-        self._password = password
-        result = True
-
-        # TEMPORARY USER AUTH
-        if user.is_temporary:
-            remote_id = user.additional_data.get('remote_id')
-
-            if remote_name:
-                logging.getLogger('paramiko').error("Temporary user can't specify remote machine.")
-                result = False
-            else:
-                try:
-                    self._application.remote = self._application.api_client.remote.get(remote_id=remote_id)
-                except ApiException as e:
-                    logging.getLogger('paramiko').error(e.message)
-                    result = False
-
-        # BASIC USER AUTH
-        else:
-            if remote_name:
-                try:
-                    self._application.remote = self._application.api_client.remote.list(name=remote_name)[0]
-                except ApiException as e:
-                    logging.getLogger('paramiko').error(e.message)
-                    result = False
-            else:
-                self._application.remote = self._application.api_client.remote.list()
-
-        return result
-
     def check_channel_request(self, kind, chanid):
         if kind == 'session':
             return paramiko.OPEN_SUCCEEDED
@@ -70,8 +35,9 @@ class Server(paramiko.ServerInterface):
         return "password,publickey"
 
     def check_auth_password(self, username, password):
+        result = paramiko.AUTH_SUCCESSFUL
         remote_name = None
-        result = paramiko.AUTH_FAILED
+        user = None
 
         if '+' in username:
             username, remote_name = username.split('+')
@@ -84,17 +50,26 @@ class Server(paramiko.ServerInterface):
             )
         except ApiException as e:
             logging.getLogger('paramiko').error(e.message)
-            return paramiko.AUTH_FAILED
+            result = paramiko.AUTH_FAILED
         try:
             user = self._application.api_client.user.get_me()
         except ApiException as e:
             logging.getLogger('paramiko').error(e.message)
-            return paramiko.AUTH_FAILED
+            result = paramiko.AUTH_FAILED
 
-        if self._check_user(user, password, remote_name):
-            result = paramiko.AUTH_SUCCESSFUL
+        remote_checker = RemoteChecker(self._application.api_client)
+
+        try:
+            remote_checker.get_user_remote(user, remote_name)
+        except paramiko.AuthenticationException as e:
+            logging.getLogger('paramiko').error(e)
+            result = paramiko.AUTH_FAILED
+
+        self._application.remote_checker = remote_checker
+        self._application.logged_user = user
+
+        if result == paramiko.AUTH_SUCCESSFUL:
             self._is_authenticated = True
-
         return result
 
     def check_channel_shell_request(self, channel):
@@ -105,12 +80,15 @@ class Server(paramiko.ServerInterface):
         return True
 
     def check_channel_exec_request(self, channel, command):
+        time.sleep(1)
         ssh_stdin, ssh_stdout, ssh_stderr = self._application.ssh_client.exec_command(command)
 
-        # TODO: Handle how to return response from exec_request
+        channel_stdin = channel.makefile_stdin('wb')
+        channel_stderr = channel.makefile_stderr('wb')
 
-        stdout_value = (ssh_stdout.read() + ssh_stderr.read()).decode().replace('\n', '\r\n')
-        channel.send(stdout_value)
+        channel_stdin.write(ssh_stdout.read())
+        channel_stderr.write(ssh_stderr.read())
+
         channel.event.set()
         channel.send_exit_status(0)
         return True

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "praetorian-ssh-proxy"
-version = "0.2.0"
+version = "0.3.0"
 description = "SSH proxy server for Praetorian API"
 authors = ["Adam Žúrek <adamzurek14@gmail.com>"]
 license = "MIT"
