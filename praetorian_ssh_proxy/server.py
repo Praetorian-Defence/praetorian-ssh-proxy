@@ -1,6 +1,8 @@
 import logging
+import re
 import threading
 import time
+from typing import Union
 
 import paramiko
 
@@ -8,6 +10,7 @@ from praetorian_api_client.api_client import ApiClient
 from praetorian_api_client.errors import ApiException
 
 from praetorian_ssh_proxy.checkers.remote_checker import RemoteChecker
+from praetorian_ssh_proxy.checkers.service_checker import ServiceChecker
 
 
 class Server(paramiko.ServerInterface):
@@ -24,6 +27,11 @@ class Server(paramiko.ServerInterface):
     def wait_to_auth(self):
         while True:
             if self._is_authenticated:
+                break
+
+    def wait_to_shh_connect(self):
+        while True:
+            if self._application.ssh_client_connected:
                 break
 
     def check_channel_request(self, kind, chanid):
@@ -58,6 +66,7 @@ class Server(paramiko.ServerInterface):
             result = paramiko.AUTH_FAILED
 
         remote_checker = RemoteChecker(self._application.api_client)
+        service_checker = ServiceChecker(self._application.api_client)
 
         try:
             remote_checker.get_user_remote(user, remote_name)
@@ -65,7 +74,14 @@ class Server(paramiko.ServerInterface):
             logging.getLogger('paramiko').error(e)
             result = paramiko.AUTH_FAILED
 
+        try:
+            service_checker.get_user_service(user)
+        except paramiko.AuthenticationException as e:
+            logging.getLogger('paramiko').error(e)
+            result = paramiko.AUTH_FAILED
+
         self._application.remote_checker = remote_checker
+        self._application.service_checker = service_checker
         self._application.logged_user = user
 
         if result == paramiko.AUTH_SUCCESSFUL:
@@ -79,8 +95,52 @@ class Server(paramiko.ServerInterface):
     def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
         return True
 
+    def _process_variables(self, command: Union[bytes, str]) -> bytes:
+        variable_expression = '\{{ (.*?) \}}'
+
+        if isinstance(command, bytes):
+            decoded_command = command.decode('utf-8')
+        else:
+            decoded_command = command
+
+        logging.getLogger('paramiko').info(f'DECODED COMMAND: {decoded_command}')
+
+        if decoded_command == 'exit':
+            self._application.api_client.user.delete_me()
+
+        variables = re.findall(variable_expression, decoded_command)
+        available_variables = self._application.service_checker.service.variables
+
+        for variable in variables:
+            if '.' in variable:
+                nested_variables = variable.split('.')
+                temp_variables = available_variables
+
+                for nested_variable in nested_variables:
+                    temp_variables = temp_variables.get(nested_variable)
+
+                value = temp_variables
+            else:
+                value = available_variables.get(variable)
+
+            if value:
+                decoded_command = re.sub(f'{{{{ {variable} }}}}', value, decoded_command)
+
+        logging.getLogger('paramiko').info(f'PROCESSED COMMAND: {decoded_command}')
+
+        if isinstance(decoded_command, str):
+            encoded_command = decoded_command.encode()
+        else:
+            encoded_command = decoded_command
+
+        logging.getLogger('paramiko').info(f'ENCODED COMMAND: {encoded_command}\n')
+
+        return encoded_command
+
     def check_channel_exec_request(self, channel, command):
-        time.sleep(1)
+        command = self._process_variables(command)
+        self.wait_to_shh_connect()
+
         ssh_stdin, ssh_stdout, ssh_stderr = self._application.ssh_client.exec_command(command)
 
         channel_stdin = channel.makefile_stdin('wb')

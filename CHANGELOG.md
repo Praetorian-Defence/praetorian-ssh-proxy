@@ -12,3 +12,10 @@
 
 - 🥐 Implemented Remote object checker
 - 🥐 Refactored connection and authentication workflow.
+
+## 0.4.0 : 2021-07-05
+
+- 🌴 Implemented Service remote checker.
+- 🌴 Changed logging setup and configuration process.
+- 🌴 Implemented variables and nested variables checking in exec_command server process.
+- 🌴 Fixed dumb long time sleep to wait process until ssh client has been successfully connected.

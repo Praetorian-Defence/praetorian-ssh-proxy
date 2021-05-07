@@ -21,15 +21,19 @@ class Application(object):
             raise Exception("You cannot create another SingletonGovt class")
 
         self.logged_user = None
+        self.service = None
 
         self.api_client = None
+        self.ssh_client_connected = False
         self.ssh_client = None
         self.user_client = None
 
         self.user_ip_address = None
         self.keyfile = None
         self.channel = None
+
         self.remote_checker = None
+        self.service_checker = None
 
         self.BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
         self.ENV_FILE = os.path.join(self.BASE_DIR, '.env')
@@ -38,11 +42,10 @@ class Application(object):
         if os.path.exists(self.ENV_FILE):
             load_dotenv(dotenv_path=self.ENV_FILE, verbose=True)
 
-        self.SSH_LOGGING_LEVEL = os.getenv('SSH_LOGGING_LEVEL')
-        self.INTERNAL_LOGGING_LEVEL = os.getenv('INTERNAL_LOGGING_LEVEL')
+        self.FILE_LOGGING_LEVEL = os.getenv('FILE_LOGGING_LEVEL', 'INFO')
+        self.CONSOLE_LOGGING_LEVEL = os.getenv('CONSOLE_LOGGING_LEVEL', 'INFO')
 
         self.HOST_KEY = paramiko.RSAKey(filename=os.path.join(self.BASE_DIR, 'test_rsa.key'))
-        self.LOGGING_LEVEL = 'DEBUG'
         self.BACKLOG = 100
 
         self.environment = Environment(name='praetorian-api', api_url=os.getenv('PRAETORIAN_API_URL'), read_only=False)
@@ -50,8 +53,7 @@ class Application(object):
             environment=self.environment, key=os.getenv('PRAETORIAN_API_KEY'), secret=os.getenv('PRAETORIAN_API_SECRET')
         )
 
-        paramiko_level = getattr(paramiko.common, self.SSH_LOGGING_LEVEL)
-        paramiko.common.logging.basicConfig(level=paramiko_level)
+        self._set_logging()
 
     @staticmethod
     def get_instance():
@@ -65,6 +67,7 @@ class Application(object):
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
             sock.bind((host, port))
             sock.listen(self.BACKLOG)
+
             logging.getLogger('paramiko').info('Listening for connection ...')
 
             while True:
@@ -81,3 +84,21 @@ class Application(object):
 
         except Exception as e:
             raise SshException(message=f'Connection Failed: {str(e)}')
+
+    def _set_logging(self):
+        paramiko_logger = logging.getLogger("paramiko")
+        paramiko_logger.setLevel(logging.DEBUG)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(self.CONSOLE_LOGGING_LEVEL)
+
+        file_handler = logging.FileHandler(self.LOG_DIR + '\\internal.log')
+        file_handler.setLevel(self.FILE_LOGGING_LEVEL)
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+        console_handler.setFormatter(formatter)
+        file_handler.setFormatter(formatter)
+
+        paramiko_logger.addHandler(console_handler)
+        paramiko_logger.addHandler(file_handler)
