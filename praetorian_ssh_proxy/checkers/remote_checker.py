@@ -25,13 +25,13 @@ class RemoteChecker(object):
         self._remote = remote
         self._remote_set = True
 
-    def get_user_remote(self, user: UserResource.User, remote_name: str = None):
+    def get_user_remote(self, user: UserResource.User, project_name: str = None, remote_name: str = None):
         if user.is_temporary:
             remote_id = user.additional_data.get('remote_id')
 
             self._remote = self._get_temporary_remote(remote_id, remote_name)
         else:
-            self._remote = self._get_remote(remote_name)
+            self._remote = self._get_remote(user, project_name, remote_name)
 
         if isinstance(self._remote, RemoteResource.Remote):
             self._remote_set = True
@@ -48,13 +48,20 @@ class RemoteChecker(object):
                 raise paramiko.AuthenticationException
         return remote
 
-    def _get_remote(self, remote_name: str = None) -> RemoteResource.Remote:
-        if remote_name:
+    def _get_remote(self, user: UserResource.User, project_name: str = None, remote_name: str = None) -> RemoteResource.Remote:
+        if project_name and remote_name:
+            project = self._api_client.project.list(user_id=str(user.id), name=project_name)[0]
+
             try:
-                remote = self._api_client.remote.list(name=remote_name)[0]
+                remote = self._api_client.remote.list(name=remote_name, project_id=str(project.id))[0]
             except ApiException as e:
                 logging.getLogger('paramiko').error(e.message)
                 raise paramiko.AuthenticationException
         else:
-            remote = self._api_client.remote.list()
+            projects = self._api_client.project.list(user_id=str(user.id))
+            remote = []
+
+            for project in projects:
+                remote = remote + self._api_client.remote.list(project_id=str(project.id))
+
         return remote

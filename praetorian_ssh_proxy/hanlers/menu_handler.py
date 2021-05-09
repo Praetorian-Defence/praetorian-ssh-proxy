@@ -13,16 +13,16 @@ class MenuHandler(object):
         return MenuHandler(client, client_channel, remote_checker)
 
     def serve_remote_menu(self):
-        if not self._remote_checker.is_service_set:
-            self._client_channel.send('------------------------------------\r\n')
-            self._client_channel.send('| Welcome to Praetorian SSH proxy  |\r\n')
-            self._client_channel.send('------------------------------------\r\n')
-            for counter, remote in enumerate(self._remote_checker.service, 1):
-                self._client_channel.send('| {:30} {} |\r\n'.format(remote.name, counter))
+        if not self._remote_checker.is_remote_set:
+            self._client_channel.send('-------------------------------------------------\r\n')
+            self._client_channel.send('| Welcome to Praetorian SSH proxy               |\r\n')
+            self._client_channel.send('-------------------------------------------------\r\n')
+            for counter, remote in enumerate(self._remote_checker.remote, 1):
+                self._client_channel.send('| ({:10}) {:30} {} |\r\n'.format(remote.project['name'], remote.name, counter))
 
-            self._client_channel.send('------------------------------------\r\n')
-            self._client_channel.send('| {:30} {} |\r\n'.format('exit', len(self._remote_checker.service) + 1))
-            self._client_channel.send('------------------------------------\r\n')
+            self._client_channel.send('-------------------------------------------------\r\n')
+            self._client_channel.send('| {:43} {} |\r\n'.format('exit', len(self._remote_checker.remote) + 1))
+            self._client_channel.send('-------------------------------------------------\r\n')
             self._client_channel.send('Choose your remote: ')
 
             while True:
@@ -44,12 +44,12 @@ class MenuHandler(object):
 
                 # ENTER
                 elif data == b'\r':
-                    if self._buffer in map(str, range(1, len(self._remote_checker.service) + 1)):
-                        self._remote_checker.set_remote(self._remote_checker.service[int(self._buffer) - 1])
-                        self._client_channel.send(f'\n\rChosen remote {self._remote_checker.service.name}.\r\n')
+                    if self._buffer in map(str, range(1, len(self._remote_checker.remote) + 1)):
+                        self._remote_checker.set_remote(self._remote_checker.remote[int(self._buffer) - 1])
+                        self._client_channel.send(f'\n\rChosen remote {self._remote_checker.remote.name}.\r\n')
                         return
 
-                    elif self._buffer == str(len(self._remote_checker.service) + 1):
+                    elif self._buffer == str(len(self._remote_checker.remote) + 1):
                         self._client_channel.send(f'\n\rExiting ...\r\n')
                         self._client.close()
                         sys.exit(0)

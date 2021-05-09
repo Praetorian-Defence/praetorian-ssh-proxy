@@ -1,7 +1,6 @@
 import logging
 import re
 import threading
-import time
 from typing import Union
 
 import paramiko
@@ -10,7 +9,6 @@ from praetorian_api_client.api_client import ApiClient
 from praetorian_api_client.errors import ApiException
 
 from praetorian_ssh_proxy.checkers.remote_checker import RemoteChecker
-from praetorian_ssh_proxy.checkers.service_checker import ServiceChecker
 
 
 class Server(paramiko.ServerInterface):
@@ -44,11 +42,12 @@ class Server(paramiko.ServerInterface):
 
     def check_auth_password(self, username, password):
         result = paramiko.AUTH_SUCCESSFUL
+        project_name = None
         remote_name = None
         user = None
 
-        if '+' in username:
-            username, remote_name = username.split('+')
+        if '+' in username and username.count('+') == 2:
+            username, project_name, remote_name = username.split('+')
 
         try:
             self._application.api_client = ApiClient.create_from_auth(
@@ -66,22 +65,14 @@ class Server(paramiko.ServerInterface):
             result = paramiko.AUTH_FAILED
 
         remote_checker = RemoteChecker(self._application.api_client)
-        service_checker = ServiceChecker(self._application.api_client)
 
         try:
-            remote_checker.get_user_remote(user, remote_name)
-        except paramiko.AuthenticationException as e:
-            logging.getLogger('paramiko').error(e)
-            result = paramiko.AUTH_FAILED
-
-        try:
-            service_checker.get_user_service(user)
+            remote_checker.get_user_remote(user, project_name, remote_name)
         except paramiko.AuthenticationException as e:
             logging.getLogger('paramiko').error(e)
             result = paramiko.AUTH_FAILED
 
         self._application.remote_checker = remote_checker
-        self._application.service_checker = service_checker
         self._application.logged_user = user
 
         if result == paramiko.AUTH_SUCCESSFUL:
@@ -109,7 +100,7 @@ class Server(paramiko.ServerInterface):
             self._application.api_client.user.delete_me()
 
         variables = re.findall(variable_expression, decoded_command)
-        available_variables = self._application.service_checker.service.variables
+        available_variables = self._application.remote_checker.remote.variables
 
         for variable in variables:
             if '.' in variable:

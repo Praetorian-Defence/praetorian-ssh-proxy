@@ -93,7 +93,7 @@ description = "Api client maintaining communication to praetorian-api."
 name = "praetorian-api-client"
 optional = false
 python-versions = "*"
-version = "0.4.1"
+version = "0.4.4"
 
 [package.dependencies]
 python-dotenv = ">=0.15.0,<0.16.0"
@@ -174,7 +174,7 @@ secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "cer
 socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7,<2.0)"]
 
 [metadata]
-content-hash = "34326a777653c3280bc1ade2714e59c415bf2ced90983b20ddb5747cc87162e3"
+content-hash = "1d9f0e0736380b506d570398c95b96d1a6935a01e6d0e11b1d158f99e4aff61a"
 lock-version = "1.0"
 python-versions = "^3.7"
 
@@ -258,8 +258,8 @@ paramiko = [
     {file = "paramiko-2.7.2.tar.gz", hash = "sha256:7f36f4ba2c0d81d219f4595e35f70d56cc94f9ac40a6acdf51d6ca210ce65035"},
 ]
 praetorian-api-client = [
-    {file = "praetorian-api-client-0.4.1.tar.gz", hash = "sha256:28c8b5d875f97815f421761552554802d5ebceb5e8262b8a730b25f73dc112a5"},
-    {file = "praetorian_api_client-0.4.1-py3-none-any.whl", hash = "sha256:13a5b7022d775650b999a38497dba032bb725bca8776846afcb52835c6339f9d"},
+    {file = "praetorian-api-client-0.4.4.tar.gz", hash = "sha256:58e438d72f42480ca21f0581ad40d69635ca1e44754559dbee7da27ca304df09"},
+    {file = "praetorian_api_client-0.4.4-py3-none-any.whl", hash = "sha256:44bc240f5995e05eff92836816145a332f4bbf07d18a40a404ada44968a5c4c0"},
 ]
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},

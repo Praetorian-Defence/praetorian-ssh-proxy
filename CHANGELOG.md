@@ -19,3 +19,7 @@
 - 🌴 Changed logging setup and configuration process.
 - 🌴 Implemented variables and nested variables checking in exec_command server process.
 - 🌴 Fixed dumb long time sleep to wait process until ssh client has been successfully connected.
+
+## 0.4.1 : 2021-09-05
+
+- 🙈 Fixed menu handlers for direct connection.
