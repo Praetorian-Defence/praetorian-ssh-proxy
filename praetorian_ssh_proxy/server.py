@@ -46,8 +46,13 @@ class Server(paramiko.ServerInterface):
         remote_name = None
         user = None
 
-        if '+' in username and username.count('+') == 2:
-            username, project_name, remote_name = username.split('+')
+        if '+' in username:
+            username, remote_project_name = username.split('+')
+
+            if '-' in remote_project_name:
+                project_name, remote_name = remote_project_name.split('-')
+            else:
+                remote_name = remote_project_name
 
         try:
             self._application.api_client = ApiClient.create_from_auth(
@@ -67,7 +72,11 @@ class Server(paramiko.ServerInterface):
         remote_checker = RemoteChecker(self._application.api_client)
 
         try:
-            remote_checker.get_user_remote(user, project_name, remote_name)
+            remote_checker.get_user_remote(
+                user=user,
+                remote_name=remote_name,
+                project_name=project_name
+            )
         except paramiko.AuthenticationException as e:
             logging.getLogger('paramiko').error(e)
             result = paramiko.AUTH_FAILED
@@ -87,7 +96,7 @@ class Server(paramiko.ServerInterface):
         return True
 
     def _process_variables(self, command: Union[bytes, str]) -> bytes:
-        variable_expression = '\{{ (.*?) \}}'
+        variable_expression = '\{{(.*?)\}}'
 
         if isinstance(command, bytes):
             decoded_command = command.decode('utf-8')
@@ -108,14 +117,17 @@ class Server(paramiko.ServerInterface):
                 temp_variables = available_variables
 
                 for nested_variable in nested_variables:
-                    temp_variables = temp_variables.get(nested_variable)
+                    if temp_variables:
+                        temp_variables = temp_variables.get(nested_variable)
+                    else:
+                        break
 
                 value = temp_variables
             else:
                 value = available_variables.get(variable)
 
             if value:
-                decoded_command = re.sub(f'{{{{ {variable} }}}}', value, decoded_command)
+                decoded_command = re.sub(f'{{{{{variable}}}}}', value, decoded_command)
 
         logging.getLogger('paramiko').info(f'PROCESSED COMMAND: {decoded_command}')
 

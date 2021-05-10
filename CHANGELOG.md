@@ -23,3 +23,8 @@
 ## 0.4.1 : 2021-09-05
 
 - 🙈 Fixed menu handlers for direct connection.
+
+## 0.4.2 : 2021-10-05
+
+- 🛩️ Changed form of direct connection to proxy.
+- 🛩️ Fixed variable getting in the script connection.
