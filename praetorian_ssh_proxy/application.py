@@ -7,7 +7,7 @@ import paramiko
 from dotenv import load_dotenv
 from praetorian_api_client.configuration import Environment, Configuration
 
-from praetorian_ssh_proxy.hanlers.connection_handler import ConnectionHandler
+from praetorian_ssh_proxy.handlers.connection_handler import ConnectionHandler
 from praetorian_ssh_proxy.errors import SshException
 
 
@@ -21,7 +21,6 @@ class Application(object):
             raise Exception("You cannot create another SingletonGovt class")
 
         self.logged_user = None
-        self.service = None
 
         self.api_client = None
         self.ssh_client_connected = False
@@ -33,7 +32,6 @@ class Application(object):
         self.channel = None
 
         self.remote_checker = None
-        self.service_checker = None
 
         self.BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
         self.ENV_FILE = os.path.join(self.BASE_DIR, '.env')

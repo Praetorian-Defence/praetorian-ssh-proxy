@@ -58,5 +58,5 @@ Choose your remote:
 - example: `fab deploy production PQWsMyD@praetorian.sk MX7EATyS6X`
 
 ---
-Developed with 💙 and ☕️ by [Adam Žúrek](https://zurek11.github.io/)
-with the support of [BACKBONE s.r.o.](https://www.backbone.sk/), 2020 (C)
+Developed with 💙 and ☕️ by [Adam Žúrek](https://zurek11.github.io/), Erik Belák
+with the support of [BACKBONE s.r.o.](https://www.backbone.sk/), 2023 (C)

@@ -1,12 +1,21 @@
+import logging
 import threading
 
 import paramiko
 from paramiko import AutoAddPolicy
-
+import paramiko.util
 from praetorian_ssh_proxy.errors import SshException
-from praetorian_ssh_proxy.hanlers.interactive_handler import InteractiveHandler
-from praetorian_ssh_proxy.hanlers.menu_handler import MenuHandler
+from praetorian_ssh_proxy.handlers.interactive_handler import InteractiveHandler
+from praetorian_ssh_proxy.handlers.menu_handler import MenuHandler
 from praetorian_ssh_proxy.server import Server
+
+# TODO: Can be remove also from interactive_handler
+logging.basicConfig(
+    filename='session_logs.log',
+    level=logging.INFO,
+    format='%(asctime)s:%(name)s:%(levelname)s:%(module)s: %(message)s',
+)
+logger = logging.getLogger('SSHSession')
 
 
 class ConnectionHandler(threading.Thread):
@@ -70,5 +79,9 @@ class ConnectionHandler(threading.Thread):
             InteractiveHandler.create_from_channel(
                 client=self._application.user_client,
                 ssh_client=self._application.ssh_client,
-                channel=self._application.channel
+                channel=self._application.channel,
+                logged_user=self._application.logged_user,
+                api_client=self._application.api_client,
+                remote=self._application.remote_checker.remote,
+                logger=logger
             ).serve_session()
