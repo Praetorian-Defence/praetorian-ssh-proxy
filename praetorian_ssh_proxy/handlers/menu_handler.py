@@ -18,7 +18,7 @@ class MenuHandler(object):
             self._client_channel.send('| Welcome to Praetorian SSH proxy               |\r\n')
             self._client_channel.send('-------------------------------------------------\r\n')
             for counter, remote in enumerate(self._remote_checker.remote, 1):
-                self._client_channel.send('| ({:10}) {:30} {} |\r\n'.format(remote.project['name'], remote.name, counter))
+                self._client_channel.send('| ({:10}) {:28} {} |\r\n'.format(remote.project['name'], remote.name, counter))
 
             self._client_channel.send('-------------------------------------------------\r\n')
             self._client_channel.send('| {:43} {} |\r\n'.format('exit', len(self._remote_checker.remote) + 1))
