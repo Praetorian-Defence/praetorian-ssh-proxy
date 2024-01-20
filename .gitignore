@@ -4,3 +4,4 @@
 /venv
 __pycache__
 logs/internal.log
+*.DS_Store

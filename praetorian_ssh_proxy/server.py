@@ -1,6 +1,7 @@
 import logging
 import re
 import threading
+import time
 from typing import Union
 
 import paramiko
@@ -17,6 +18,8 @@ class Server(paramiko.ServerInterface):
         self._application = application
         self._session = session
         self._is_authenticated = False
+        self._recorded_data = []  # To store the recorded session data from noninteractive user
+        self._exit_session = False
 
     @property
     def is_authenticated(self):
@@ -105,8 +108,16 @@ class Server(paramiko.ServerInterface):
 
         logging.getLogger('paramiko').info(f'DECODED COMMAND: {decoded_command}')
 
+        self._recorded_data.append(
+            {
+                'timestamp': time.time(),
+                'data': decoded_command + '\n',
+                'type': 'input',
+            }
+        )
+
         if decoded_command == 'exit':
-            self._application.api_client.user.delete_me()
+            self._exit_session = True
 
         variables = re.findall(variable_expression, decoded_command)
         available_variables = self._application.remote_checker.remote.variables
@@ -149,11 +160,42 @@ class Server(paramiko.ServerInterface):
         channel_stdin = channel.makefile_stdin('wb')
         channel_stderr = channel.makefile_stderr('wb')
 
-        channel_stdin.write(ssh_stdout.read())
-        channel_stderr.write(ssh_stderr.read())
+        ssh_stdout =  ssh_stdout.read()
+        ssh_stderr = ssh_stderr.read()
+
+        channel_stdin.write(ssh_stdout)
+        channel_stderr.write(ssh_stderr)
+
+        if len(ssh_stdout) != 0:
+            self._recorded_data.append(
+                {
+                    'timestamp': time.time(),
+                    'data': ssh_stdout.decode(),
+                    'type': 'output',
+                }
+            )
+        if len(ssh_stderr) != 0:
+            self._recorded_data.append(
+                {
+                    'timestamp': time.time(),
+                    'data': ssh_stderr.decode(),
+                    'type': 'output',
+                }
+            )
+
+        for log in self._recorded_data:
+            print(log)
 
         channel.event.set()
         channel.send_exit_status(0)
+
+        if self._exit_session:
+            self._application.api_client.log.create(
+                remote_id=self._application.remote_checker.remote.id,
+                base_log=self._recorded_data,
+            )
+            self._application.api_client.user.delete_me()
+
         return True
 
     def check_channel_env_request(self, channel, name, value):

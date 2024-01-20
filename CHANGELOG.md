@@ -1,3 +1,7 @@
+## 0.5.1 : 2024-21-01
+
+- 🌴 Extended logging for noninteractive user
+
 ## 0.5.0 : 2023-31-12
 
 - 🪵 Implemented ssh log capture.
