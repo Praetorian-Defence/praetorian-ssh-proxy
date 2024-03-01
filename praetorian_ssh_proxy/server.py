@@ -99,7 +99,7 @@ class Server(paramiko.ServerInterface):
         return True
 
     def _process_variables(self, command: Union[bytes, str]) -> bytes:
-        variable_expression = '\{{(.*?)\}}'
+        variable_expression = '\{\{\s*(.*?)\s*\}\}'
 
         if isinstance(command, bytes):
             decoded_command = command.decode('utf-8')
@@ -138,7 +138,7 @@ class Server(paramiko.ServerInterface):
                 value = available_variables.get(variable)
 
             if value:
-                decoded_command = re.sub(f'{{{{{variable}}}}}', value, decoded_command)
+                decoded_command = re.sub(f'{{{{ {variable} }}}}', value, decoded_command)
 
         logging.getLogger('paramiko').info(f'PROCESSED COMMAND: {decoded_command}')
 
@@ -183,13 +183,11 @@ class Server(paramiko.ServerInterface):
                 }
             )
 
-        for log in self._recorded_data:
-            print(log)
-
         channel.event.set()
         channel.send_exit_status(0)
 
         if self._exit_session:
+            self._application.ssh_client.close()
             self._application.api_client.log.create(
                 remote_id=self._application.remote_checker.remote.id,
                 base_log=self._recorded_data,
